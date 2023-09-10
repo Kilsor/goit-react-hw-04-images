@@ -2,24 +2,25 @@ import React, { useEffect } from 'react';
 import { Overlay, ModalContainer } from './Modal.styled';
 
 export const Modal = ({ src, alt, onClose }) => {
-  const handleKeyPress = evt => {
-    if (evt.code === 'Escape') {
-      onClose();
-    }
-  };
+  useEffect(() => {
+    const handleKeyPress = evt => {
+      if (evt.code === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyPress);
+    };
+  }, [onClose]);
 
   const handleCloseClick = evt => {
     if (evt.target === evt.currentTarget) {
       onClose();
     }
   };
-
-  useEffect(() => {
-    window.addEventListener('keydown', handleKeyPress);
-    return () => {
-      window.removeEventListener('keydown', handleKeyPress);
-    };
-  }, []);
 
   return (
     <Overlay onClick={handleCloseClick}>
