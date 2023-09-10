@@ -1,7 +1,7 @@
-import { Wrapper } from './App.styled';
-
-import React, { Component } from 'react';
+// App.js
+import React, { useState, useEffect } from 'react';
 import { Element, scroller } from 'react-scroll';
+import { Wrapper } from './App.styled';
 import { Searchbar } from './Searchbar/Searchbar';
 import { ImageGallery } from './ImageGallery/ImageGallery';
 import { Button } from './Button/Button';
@@ -9,104 +9,83 @@ import { Modal } from './Modal/Modal';
 import { Loader } from './Loader/Loader';
 import { fetchImages } from './Api';
 
-export class App extends Component {
-  state = {
-    query: '',
-    images: [],
-    page: 1,
-    selectedImage: null,
-    isLoading: false,
-    randomId: null,
+export function App() {
+  const [query, setQuery] = useState('');
+  const [images, setImages] = useState([]);
+  const [page, setPage] = useState(1);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [totalHits, setTotalHits] = useState(null);
+
+  const handleSubmit = newQuery => {
+    const newRandomId = Math.random();
+    setQuery(`${newRandomId}/${newQuery}`);
+    setImages([]);
+    setPage(1);
   };
 
-  handleSubmit = query => {
-    const randomId = Math.random();
-    this.setState({
-      query: `${randomId}/${query}`,
-      images: [],
-      page: 1,
-      randomId: randomId,
-    });
+  const handleLoadMore = () => {
+    setPage(prevPage => prevPage + 1);
   };
 
-  handleLoadMore = () => {
-    this.setState(
-      prevState => ({
-        page: prevState.page + 1,
-      }),
-      () => {
-        // Отримуємо поточне положення галереї
-        const currentGalleryPosition = window.scrollY;
-
-        // Після оновлення сторінки, прокручуйте до нових картинок
-        scroller.scrollTo('image-gallery', {
-          duration: 800, // тривалість прокрутки в мілісекундах
-          smooth: 'easeInOutQuart', // тип прокрутки
-          offset: currentGalleryPosition + 700, // прокручувати на поточне положення галереї
-        });
-      }
-    );
+  const handleImageClick = newSelectedImage => {
+    setSelectedImage(newSelectedImage);
   };
 
-  handleImageClick = selectedImage => {
-    this.setState({ selectedImage });
+  const handleCloseModal = () => {
+    setSelectedImage(null);
   };
 
-  handleCloseModal = () => {
-    this.setState({ selectedImage: null });
-  };
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!query) return;
 
-  async componentDidUpdate(prevProps, prevState) {
-    if (
-      prevState.query !== this.state.query ||
-      prevState.page !== this.state.page ||
-      prevState.randomId !== this.state.randomId // Додано перевірку randomID
-    ) {
-      this.setState({ isLoading: true });
+      setIsLoading(true);
 
       try {
-        const { hits, totalHits } = await fetchImages(
-          this.state.query,
-          this.state.page
-        );
+        const { hits, totalHits } = await fetchImages(query, page);
 
-        this.setState(prevState => ({
-          images: [...prevState.images, ...hits],
-          totalHits: totalHits,
-        }));
+        setImages(prevImages => [...prevImages, ...hits]);
+        setTotalHits(totalHits);
       } catch (error) {
         console.error('Error fetching images:', error);
       } finally {
-        this.setState({ isLoading: false });
+        setIsLoading(false);
       }
+    };
+
+    fetchData();
+  }, [query, page]);
+
+  useEffect(() => {
+    // Scroll logic here
+    if (page > 1) {
+      const currentGalleryPosition = window.scrollY;
+      scroller.scrollTo('image-gallery', {
+        duration: 800,
+        smooth: 'easeInOutQuart',
+        offset: currentGalleryPosition + 700,
+      });
     }
-  }
+  }, [page]);
 
-  render() {
-    const { images, selectedImage, isLoading, totalHits } = this.state;
-
-    return (
-      <Wrapper>
-        <Searchbar onSubmit={this.handleSubmit} />
-        <Element name="image-gallery">
-          <ImageGallery
-            images={images}
-            handleImageClick={this.handleImageClick}
-          ></ImageGallery>
-        </Element>
-        {isLoading && <Loader />}
-        {images.length > 0 && images.length < totalHits && (
-          <Button onClick={this.handleLoadMore} />
-        )}
-
-        {selectedImage && (
-          <Modal
-            src={selectedImage}
-            alt={selectedImage}
-            onClose={this.handleCloseModal}
-          />
-        )}
-      </Wrapper>
-    );
-  }
+  return (
+    <Wrapper>
+      <Searchbar onSubmit={handleSubmit} />
+      <Element name="image-gallery">
+        <ImageGallery images={images} handleImageClick={handleImageClick} />
+      </Element>
+      {isLoading && <Loader />}
+      {images.length > 0 && images.length < totalHits && (
+        <Button onClick={handleLoadMore} />
+      )}
+      {selectedImage && (
+        <Modal
+          src={selectedImage}
+          alt={selectedImage}
+          onClose={handleCloseModal}
+        />
+      )}
+    </Wrapper>
+  );
 }
